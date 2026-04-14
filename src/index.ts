@@ -1,16 +1,8 @@
-import express from 'express';
+import { env } from './config/env.js'
+import { createApp } from './app.js'
 
-const app = express();
-const port = Number(process.env.PORT ?? 4000);
+const app = createApp()
 
-app.use(express.json());
-
-app.get('/', (_req, res) => {
-  res.json({
-    message: 'API funcionando con Express y TypeScript',
-  });
-});
-
-app.listen(port, () => {
-  console.log(`Servidor corriendo en http://localhost:${port}`);
-});
+app.listen(env.port, () => {
+  console.log(`Backend MaestroYa escuchando en http://localhost:${env.port}`)
+})
