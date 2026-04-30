@@ -3,12 +3,17 @@ import cors from 'cors'
 import express from 'express'
 import { env } from './config/env.js'
 import { adminAuthRouter } from './modules/admin-auth/admin-auth.routes.js'
+import { adminDataRouter } from './modules/admin-data/admin-data.routes.js'
 import { errorHandler } from './shared/http/error-handler.js'
 import { requireTrustedOrigin } from './shared/http/middlewares/require-trusted-origin.js'
 import { notFoundHandler } from './shared/http/not-found-handler.js'
 
 export function createApp() {
   const app = express()
+
+  // Trust the first proxy (e.g. nginx / cloud LB) so req.ip is accurate
+  // for rate limiting and audit logging.
+  app.set('trust proxy', 1)
 
   app.use(
     cors({
@@ -58,6 +63,7 @@ export function createApp() {
   })
 
   app.use('/api/admin', adminAuthRouter)
+  app.use('/api/admin', adminDataRouter)
 
   app.use(notFoundHandler)
   app.use(errorHandler)

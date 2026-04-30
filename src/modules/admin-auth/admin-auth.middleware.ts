@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express'
 import { ApiError } from '../../shared/http/api-error.js'
 import { obtenerSesionAdmin } from './admin-auth.service.js'
+import { setAdminAuthCookies } from './admin-auth.controller.js'
 
 export async function requireAdminSession(req: Request, res: Response, next: NextFunction) {
   try {
@@ -10,14 +11,7 @@ export async function requireAdminSession(req: Request, res: Response, next: Nex
     })
 
     if (session.refrescada) {
-      res.cookie(res.locals.adminAccessCookieName as string, session.accessToken, res.locals.adminAccessCookieOptions)
-      if (session.refreshToken) {
-        res.cookie(
-          res.locals.adminRefreshCookieName as string,
-          session.refreshToken,
-          res.locals.adminRefreshCookieOptions,
-        )
-      }
+      setAdminAuthCookies(res, session)
     }
 
     req.adminSession = session

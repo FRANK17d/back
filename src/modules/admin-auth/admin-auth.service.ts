@@ -28,10 +28,15 @@ function mapInsforgeAuthError(error: { statusCode?: number; message?: string; er
   }
 
   if (error.statusCode === 400) {
-    return new ApiError(400, error.error || 'SOLICITUD_INVALIDA', error.message || 'La solicitud es inválida.')
+    return new ApiError(400, 'SOLICITUD_INVALIDA', 'La solicitud es inválida.')
   }
 
-  return new ApiError(500, error.error || 'AUTH_ERROR', error.message || 'No se pudo completar la autenticación.')
+  // Never forward raw InsForge messages — they may leak internal details.
+  if (error.statusCode && error.statusCode >= 500) {
+    console.error('[admin-auth] InsForge upstream error:', error.message ?? error.error)
+  }
+
+  return new ApiError(500, 'AUTH_ERROR', 'No se pudo completar la autenticación.')
 }
 
 async function invalidateSession(accessToken?: string | null) {
@@ -121,7 +126,7 @@ export async function iniciarSesionAdmin(input: {
   })
   const timestamp = new Date().toISOString()
 
-  await Promise.allSettled([
+  const postLoginResults = await Promise.allSettled([
     touchLastLogin(data.accessToken, admin.id, timestamp),
     createAuditEntry(data.accessToken, {
       userId: admin.id,
@@ -131,6 +136,12 @@ export async function iniciarSesionAdmin(input: {
       meta: input.meta,
     }),
   ])
+
+  for (const result of postLoginResults) {
+    if (result.status === 'rejected') {
+      console.warn('[admin-auth] post-login side effect failed:', result.reason)
+    }
+  }
 
   return {
     usuario: buildAdminUser({ ...admin, last_login_at: timestamp }),
@@ -194,24 +205,36 @@ export async function refrescarSesionAdmin(input: {
 
 export async function cerrarSesionAdmin(input: {
   accessToken?: string
+  refreshToken?: string
   meta: RequestMeta
 }) {
-  if (!input.accessToken) {
+  if (!input.accessToken && !input.refreshToken) {
     return
   }
 
-  const admin = await obtenerSesionAdmin({ accessToken: input.accessToken }).catch(() => null)
+  // Resolve a working session so we can audit + sign out with a valid token.
+  // Pass both tokens so the service can refresh if the access token expired.
+  const session = await obtenerSesionAdmin({
+    accessToken: input.accessToken,
+    refreshToken: input.refreshToken,
+  }).catch(() => null)
 
-  if (admin) {
-    await createAuditEntry(input.accessToken, {
-      userId: admin.usuario.id,
+  if (session) {
+    await createAuditEntry(session.accessToken, {
+      userId: session.usuario.id,
       action: 'admin_logout',
-      recordId: admin.usuario.id,
+      recordId: session.usuario.id,
       meta: input.meta,
     }).catch(() => undefined)
-  }
 
-  await invalidateSession(input.accessToken)
+    // Sign out with the (potentially refreshed) token so the correct
+    // server-side session is actually invalidated.
+    await invalidateSession(session.accessToken)
+  } else {
+    // Best-effort: try to invalidate with the original token even if
+    // session resolution failed (e.g. admin row deleted).
+    await invalidateSession(input.accessToken)
+  }
 }
 
 export async function solicitarRestablecimientoAdmin(input: {

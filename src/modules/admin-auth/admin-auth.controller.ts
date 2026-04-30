@@ -21,7 +21,7 @@ function getRequestMeta(req: Request): RequestMeta {
   }
 }
 
-function setAdminAuthCookies(res: Response, session: Pick<AdminSession, 'accessToken' | 'refreshToken'>) {
+export function setAdminAuthCookies(res: Response, session: Pick<AdminSession, 'accessToken' | 'refreshToken'>) {
   const accessOptions = res.locals.adminAccessCookieOptions as CookieOptions
   const refreshOptions = res.locals.adminRefreshCookieOptions as CookieOptions
   const accessCookieName = res.locals.adminAccessCookieName as string
@@ -37,9 +37,17 @@ function setAdminAuthCookies(res: Response, session: Pick<AdminSession, 'accessT
 function clearAdminAuthCookies(res: Response) {
   const accessCookieName = res.locals.adminAccessCookieName as string
   const refreshCookieName = res.locals.adminRefreshCookieName as string
+  const accessOptions = res.locals.adminAccessCookieOptions as CookieOptions
+  const refreshOptions = res.locals.adminRefreshCookieOptions as CookieOptions
 
-  res.clearCookie(accessCookieName)
-  res.clearCookie(refreshCookieName)
+  // clearCookie only works when path/domain/secure/sameSite match the original set.
+  // Omitting them causes the browser to keep the cookie (especially in production
+  // where secure=true and sameSite='strict').
+  const { maxAge: _a, ...accessClearOpts } = accessOptions
+  const { maxAge: _r, ...refreshClearOpts } = refreshOptions
+
+  res.clearCookie(accessCookieName, accessClearOpts)
+  res.clearCookie(refreshCookieName, refreshClearOpts)
 }
 
 export async function iniciarSesionAdminController(req: Request, res: Response) {
@@ -100,6 +108,7 @@ export async function refrescarSesionAdminController(req: Request, res: Response
 export async function cerrarSesionAdminController(req: Request, res: Response) {
   await cerrarSesionAdmin({
     accessToken: req.cookies[res.locals.adminAccessCookieName as string] as string | undefined,
+    refreshToken: req.cookies[res.locals.adminRefreshCookieName as string] as string | undefined,
     meta: getRequestMeta(req),
   })
 

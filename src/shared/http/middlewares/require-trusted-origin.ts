@@ -27,8 +27,11 @@ export const requireTrustedOrigin: RequestHandler = (req, _res, next) => {
     return
   }
 
+  // Reject state-changing requests that arrive without Origin or Referer.
+  // Legitimate browser requests always send at least one of these headers.
+  // Allowing requests without them would let non-browser clients bypass CSRF.
   if (!requestOrigin && !requestReferer) {
-    next()
+    next(new ApiError(403, 'ORIGIN_REQUIRED', 'La solicitud requiere un encabezado Origin o Referer.'))
     return
   }
 
