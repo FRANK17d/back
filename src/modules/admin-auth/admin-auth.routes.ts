@@ -36,20 +36,28 @@ const adminPasswordResetRateLimit = createRateLimit({
   message: 'Demasiadas solicitudes de restablecimiento. Espera unos minutos e inténtalo de nuevo.',
 })
 
-adminAuthRouter.post('/sessions', validateBody(iniciarSesionAdminSchema), adminLoginRateLimit, asyncHandler(iniciarSesionAdminController))
+const adminOtpVerificationRateLimit = createRateLimit({
+  windowMs: 1000 * 60 * 15,
+  maxRequests: 5,
+  key: (req) => `otp:${req.ip}:${String(req.body?.correo ?? '').trim().toLowerCase()}`,
+  code: 'ADMIN_OTP_RATE_LIMITED',
+  message: 'Demasiados intentos de verificación. Espera unos minutos e inténtalo de nuevo.',
+})
+
+adminAuthRouter.post('/sessions', adminLoginRateLimit, validateBody(iniciarSesionAdminSchema), asyncHandler(iniciarSesionAdminController))
 adminAuthRouter.get('/sessions/current', asyncHandler(obtenerSesionAdminController))
 adminAuthRouter.post('/sessions/refresh', asyncHandler(refrescarSesionAdminController))
 adminAuthRouter.delete('/sessions/current', asyncHandler(cerrarSesionAdminController))
 adminAuthRouter.post(
   '/password-reset-requests',
-  validateBody(solicitarRestablecimientoSchema),
   adminPasswordResetRateLimit,
+  validateBody(solicitarRestablecimientoSchema),
   asyncHandler(solicitarRestablecimientoAdminController),
 )
 adminAuthRouter.post(
   '/password-reset-verifications',
+  adminOtpVerificationRateLimit,
   validateBody(verificarCodigoRestablecimientoSchema),
-  adminPasswordResetRateLimit,
   asyncHandler(verificarCodigoRestablecimientoAdminController),
 )
 adminAuthRouter.post(

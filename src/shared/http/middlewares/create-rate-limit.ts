@@ -14,8 +14,21 @@ type Bucket = {
   expiresAt: number
 }
 
+const SWEEP_INTERVAL_MS = 1000 * 60 * 5 // 5 min
+
 export function createRateLimit(options: RateLimitOptions): RequestHandler {
   const buckets = new Map<string, Bucket>()
+
+  // Periodic sweep to prevent unbounded memory growth from unique keys.
+  const timer = setInterval(() => {
+    const now = Date.now()
+    for (const [key, bucket] of buckets) {
+      if (bucket.expiresAt <= now) {
+        buckets.delete(key)
+      }
+    }
+  }, SWEEP_INTERVAL_MS)
+  timer.unref()
 
   return (req, _res, next) => {
     const now = Date.now()

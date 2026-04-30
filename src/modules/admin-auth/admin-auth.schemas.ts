@@ -21,5 +21,5 @@ export const verificarCodigoRestablecimientoSchema = z.object({
 
 export const restablecerContrasenaSchema = z.object({
   token: z.string().trim().min(1, 'El token es obligatorio.'),
-  nuevaContrasena: z.string().min(6, 'La nueva contraseña debe tener al menos 6 caracteres.'),
+  nuevaContrasena: z.string().min(12, 'La nueva contraseña debe tener al menos 12 caracteres.'),
 })
