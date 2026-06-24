@@ -34,7 +34,13 @@ export function createApp() {
 
   app.use(
     cors({
-      origin: env.appOrigin,
+      origin: (origin, callback) => {
+        // Mobile apps don't send Origin header; allow when absent.
+        if (!origin) return callback(null, true)
+        // Web requests: only allow configured origin.
+        if (origin === env.appOrigin) return callback(null, true)
+        callback(new Error('CORS'))
+      },
       credentials: true,
     }),
   )
