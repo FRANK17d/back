@@ -35,10 +35,14 @@ export const env = {
   appOrigin: process.env.APP_ORIGIN?.trim() || 'http://localhost:3000',
   insforgeUrl: getRequiredEnv('INSFORGE_URL'),
   insforgeAnonKey: getRequiredEnv('INSFORGE_ANON_KEY'),
-  adminAccessCookieName:
-    process.env.ADMIN_ACCESS_COOKIE_NAME?.trim() || 'maestroya_admin_access_token',
-  adminRefreshCookieName:
-    process.env.ADMIN_REFRESH_COOKIE_NAME?.trim() || 'maestroya_admin_refresh_token',
-  adminAccessCookieMaxAgeMs: getNumberEnv('ADMIN_ACCESS_COOKIE_MAX_AGE_MS', 1000 * 60 * 15),
-  adminRefreshCookieMaxAgeMs: getNumberEnv('ADMIN_REFRESH_COOKIE_MAX_AGE_MS', 1000 * 60 * 60 * 12),
+  insforgeApiKey: process.env.INSFORGE_API_KEY?.trim() || '',
+  publicApiUrl: process.env.PUBLIC_API_URL?.trim().replace(/\/+$/, '') || '',
+  paymentSuccessUrl: process.env.PAYMENT_SUCCESS_URL?.trim() || '',
+  paymentFailureUrl: process.env.PAYMENT_FAILURE_URL?.trim() || '',
+  paymentPendingUrl: process.env.PAYMENT_PENDING_URL?.trim() || '',
+  mercadoPagoAccessToken: process.env.MERCADOPAGO_ACCESS_TOKEN?.trim() || '',
+  mercadoPagoWebhookSecret: process.env.MERCADOPAGO_WEBHOOK_SECRET?.trim() || '',
+  // Model Gateway de InsForge (clave de OpenRouter del dashboard). Opcional:
+  // si falta, las rutas de IA devuelven un error claro en vez de romper el boot.
+  openrouterApiKey: process.env.OPENROUTER_API_KEY?.trim() || '',
 } as const

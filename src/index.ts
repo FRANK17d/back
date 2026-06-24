@@ -4,5 +4,5 @@ import { createApp } from './app.js'
 const app = createApp()
 
 app.listen(env.port, () => {
-  console.log(`Backend MaestroYa escuchando en http://localhost:${env.port}`)
+  console.log(`Backend TOKE+ escuchando en http://localhost:${env.port}`)
 })

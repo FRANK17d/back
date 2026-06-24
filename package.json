@@ -7,22 +7,20 @@
     "dev": "node --env-file=.env --watch --import tsx src/index.ts",
     "build": "tsc",
     "start": "node --env-file=.env dist/index.js",
-    "test": "npm run test:admin-auth",
-    "test:admin-auth": "node --env-file=.env --import tsx scripts/test-admin-auth.ts"
+    "test": "echo \"No tests configured\""
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "module",
   "dependencies": {
-    "@insforge/sdk": "^1.2.4",
-    "cookie-parser": "^1.4.7",
+    "@insforge/sdk": "^1.2.10",
     "cors": "^2.8.6",
     "express": "^5.2.1",
+    "openai": "^6.44.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^25.5.2",
