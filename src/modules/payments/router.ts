@@ -121,6 +121,22 @@ paymentsRouter.post(
   }),
 )
 
+paymentsRouter.get(
+  '/mercadopago/return',
+  asyncHandler(async (req, res) => {
+    const status = getString(req.query.status) || 'success'
+    const orderId = getString(req.query.order_id)
+    const target = getReturnUrl(getReturnBaseUrl(status), orderId, status)
+
+    if (!target) {
+      res.status(200).send('Pago procesado. Puedes volver a Toke+.')
+      return
+    }
+
+    res.redirect(302, target)
+  }),
+)
+
 paymentsRouter.post(
   '/tokepro/checkout',
   validateBody(createTokeProCheckoutSchema),
@@ -157,7 +173,7 @@ paymentsRouter.post(
         reason: `TokePro - ${plan.name}`,
         external_reference: orderId,
         payer_email: technician.email,
-        back_url: getReturnUrl(env.paymentSuccessUrl, orderId, 'success'),
+        back_url: getBackendReturnUrl(orderId, 'success'),
         notification_url: getNotificationUrl(),
         status: 'pending',
         auto_recurring: {
@@ -197,6 +213,11 @@ paymentsRouter.post(
 
     if (!dataId) {
       res.status(200).json({ ok: true })
+      return
+    }
+
+    if (isMercadoPagoTestNotification(req, dataId)) {
+      res.status(200).json({ ok: true, test: true })
       return
     }
 
@@ -488,6 +509,12 @@ function getWebhookDataId(req: Request, options: { preferQuery?: boolean } = {})
   return queryId || getString(body?.data?.id) || getString(body?.id)
 }
 
+function isMercadoPagoTestNotification(req: Request, dataId: string) {
+  const body = req.body as { id?: unknown; live_mode?: unknown } | undefined
+
+  return dataId === '123456' && getString(body?.id) === '123456' && body?.live_mode === false
+}
+
 function getNotificationUrl() {
   return `${env.publicApiUrl}/api/payments/mercadopago/webhook`
 }
@@ -505,6 +532,18 @@ function getPreferenceReturnUrls(orderId: string) {
   }
 }
 
+function getReturnBaseUrl(status: string) {
+  if (status === 'failure') return env.paymentFailureUrl
+  if (status === 'pending') return env.paymentPendingUrl
+  return env.paymentSuccessUrl
+}
+
+function getBackendReturnUrl(orderId: string, status: string) {
+  if (!env.publicApiUrl) return undefined
+
+  return getReturnUrl(`${env.publicApiUrl}/api/payments/mercadopago/return`, orderId, status)
+}
+
 function getReturnUrl(baseUrl: string, orderId: string, status: string) {
   if (!baseUrl) return undefined
 
@@ -515,7 +554,9 @@ function getReturnUrl(baseUrl: string, orderId: string, status: string) {
 }
 
 function getCheckoutUrl(response: { init_point?: string; sandbox_init_point?: string }) {
-  const checkoutUrl = response.init_point || response.sandbox_init_point
+  const checkoutUrl = env.mercadoPagoUseSandbox
+    ? response.sandbox_init_point || response.init_point
+    : response.init_point || response.sandbox_init_point
 
   if (!checkoutUrl) {
     throw new ApiError(502, 'CHECKOUT_NO_CREADO', 'Mercado Pago no devolvio URL de checkout.')

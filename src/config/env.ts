@@ -26,6 +26,14 @@ function getNumberEnv(name: string, fallback: number) {
   return parsed
 }
 
+function getBooleanEnv(name: string, fallback = false) {
+  const value = process.env[name]?.trim().toLowerCase()
+
+  if (!value) return fallback
+
+  return value === '1' || value === 'true' || value === 'yes'
+}
+
 const nodeEnv = (process.env.NODE_ENV?.trim() as NodeEnv | undefined) ?? 'development'
 
 export const env = {
@@ -41,6 +49,7 @@ export const env = {
   paymentFailureUrl: process.env.PAYMENT_FAILURE_URL?.trim() || '',
   paymentPendingUrl: process.env.PAYMENT_PENDING_URL?.trim() || '',
   mercadoPagoAccessToken: process.env.MERCADOPAGO_ACCESS_TOKEN?.trim() || '',
+  mercadoPagoUseSandbox: getBooleanEnv('MERCADOPAGO_USE_SANDBOX'),
   mercadoPagoWebhookSecret: process.env.MERCADOPAGO_WEBHOOK_SECRET?.trim() || '',
   // Model Gateway de InsForge (clave de OpenRouter del dashboard). Opcional:
   // si falta, las rutas de IA devuelven un error claro en vez de romper el boot.
