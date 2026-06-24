@@ -1,6 +1,9 @@
 import cors from 'cors'
 import express from 'express'
+import { pinoHttp } from 'pino-http'
 import { env } from './config/env.js'
+import { createInsforgeAdminClient } from './infrastructure/insforge/client.js'
+import { logger } from './infrastructure/logger.js'
 import { errorHandler } from './shared/http/error-handler.js'
 import { createRateLimit } from './shared/http/middlewares/create-rate-limit.js'
 import { requireTrustedOrigin } from './shared/http/middlewares/require-trusted-origin.js'
@@ -45,6 +48,7 @@ export function createApp() {
     }),
   )
   app.use(express.json({ limit: '1mb' }))
+  app.use(pinoHttp({ logger, autoLogging: { ignore: (req: any) => req.url === '/health' } }))
 
   app.use('/api/admin', requireTrustedOrigin)
   app.use('/api/admin', (_req, res, next) => {
@@ -54,14 +58,26 @@ export function createApp() {
     next()
   })
 
-  app.get('/health', (_req, res) => {
-    res.status(200).json({
-      ok: true,
-      datos: {
-        servicio: 'backend-toke',
-        estado: 'ok',
-      },
-    })
+  app.get('/health', async (_req, res) => {
+    try {
+      const admin = createInsforgeAdminClient()
+      const { error } = await (admin as any).database.from('profiles').select('id', { count: 'exact', head: true })
+      const dbOk = !error
+      const mpOk = !!env.mercadoPagoAccessToken
+      const allOk = dbOk
+
+      res.status(allOk ? 200 : 503).json({
+        ok: allOk,
+        datos: {
+          servicio: 'backend-toke',
+          db: dbOk ? 'ok' : 'error',
+          mercadopago: mpOk ? 'configurado' : 'sin_configurar',
+          ai: env.openrouterApiKey ? 'configurado' : 'sin_configurar',
+        },
+      })
+    } catch {
+      res.status(503).json({ ok: false, datos: { servicio: 'backend-toke', db: 'error' } })
+    }
   })
 
   app.use('/api/notifications', notificationsRouter)
