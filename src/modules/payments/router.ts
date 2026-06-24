@@ -226,7 +226,7 @@ paymentsRouter.post(
     } else if (eventType === 'subscription_preapproval' || eventType === 'preapproval') {
       await handlePreapprovalWebhook(dataId)
     } else if (eventType === 'subscription_authorized_payment') {
-      console.warn('[payments/webhook] subscription_authorized_payment pending implementation', dataId)
+      await handleSubscriptionAuthorizedPayment(dataId)
     }
 
     res.status(200).json({ ok: true })
@@ -427,6 +427,66 @@ async function handlePreapprovalWebhook(preapprovalId: string) {
     provider_preapproval_id: preapprovalId,
     provider_payload: preapproval,
   })
+}
+
+async function handleSubscriptionAuthorizedPayment(authorizedPaymentId: string) {
+  // Mercado Pago envía el ID del pago autorizado de la suscripción recurrente.
+  // Consultamos el pago para obtener el preapproval_id y acreditar.
+  const payment = await mercadoPagoRequest<Record<string, unknown>>(
+    `/authorized_payments/${authorizedPaymentId}`,
+  )
+
+  const preapprovalId = getString(payment.preapproval_id)
+  const paymentStatus = getString(payment.status)
+
+  if (paymentStatus !== 'approved') {
+    console.warn('[payments/webhook] subscription_authorized_payment not approved', authorizedPaymentId, paymentStatus)
+    return
+  }
+
+  if (!preapprovalId) {
+    console.warn('[payments/webhook] subscription_authorized_payment without preapproval_id', authorizedPaymentId)
+    return
+  }
+
+  const admin = createInsforgeAdminClient()
+
+  // Buscar la orden original por su provider_preapproval_id
+  const orderResult = await selectFirst<PaymentOrderRow & { technician_id?: string; credits?: number }>(
+    await (admin as any).database
+      .from('payment_orders')
+      .select('id, kind, technician_id, credits')
+      .eq('provider_preapproval_id', preapprovalId)
+      .eq('kind', 'subscription')
+      .limit(1),
+  )
+
+  if (!orderResult) {
+    console.warn('[payments/webhook] subscription order not found for preapproval', preapprovalId)
+    return
+  }
+
+  const technicianId = orderResult.technician_id
+  const credits = orderResult.credits ?? 0
+
+  if (!technicianId || credits <= 0) {
+    console.warn('[payments/webhook] subscription order missing technician or credits', orderResult.id)
+    return
+  }
+
+  // Acreditar créditos recurrentes al técnico
+  const { error } = (await (admin as any).database.rpc('grant_subscription_credits', {
+    p_technician_id: technicianId,
+    p_credits: credits,
+    p_authorized_payment_id: authorizedPaymentId,
+  })) as DbResponse
+
+  if (error) {
+    console.error('[payments/webhook] failed to grant subscription credits', error)
+    return
+  }
+
+  console.info('[payments/webhook] subscription credits granted', { technicianId, credits, authorizedPaymentId })
 }
 
 async function mercadoPagoRequest<T>(
