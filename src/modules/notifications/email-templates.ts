@@ -105,3 +105,90 @@ export function verificationRejectedEmail() {
     `),
   }
 }
+
+// ─── Nuevos templates ────────────────────────────────────────────────────────
+
+export function welcomeEmail(name: string) {
+  return {
+    subject: '¡Bienvenido a TOKE+!',
+    html: baseLayout('Bienvenido', `
+      <h2 style="margin:0 0 12px;font-size:18px;color:#141413;">¡Hola${name ? `, ${name}` : ''}!</h2>
+      <p style="margin:0 0 16px;font-size:14px;color:#555;line-height:1.6;">
+        Ya eres parte de TOKE+, la plataforma que conecta clientes con técnicos de confianza en Trujillo.
+      </p>
+      <p style="margin:0 0 16px;font-size:14px;color:#555;line-height:1.6;">
+        Desde la app puedes publicar un pedido de servicio o, si eres técnico, postular a trabajos en tu zona.
+      </p>
+      <p style="margin:0;font-size:13px;color:#888;">
+        ¿Dudas? Escríbenos desde la sección de soporte.
+      </p>
+    `),
+  }
+}
+
+export function orderCompletedEmail(title: string) {
+  return {
+    subject: '¡Servicio completado! — TOKE+',
+    html: baseLayout('Servicio completado', `
+      <h2 style="margin:0 0 12px;font-size:18px;color:#141413;">Servicio completado</h2>
+      <p style="margin:0 0 16px;font-size:14px;color:#555;line-height:1.6;">
+        El servicio <strong>"${title}"</strong> fue marcado como completado.
+        Por favor, califica al técnico desde la app para ayudar a otros clientes.
+      </p>
+      <p style="margin:0;font-size:13px;color:#888;">
+        Tu opinión es muy importante para la comunidad.
+      </p>
+    `),
+  }
+}
+
+export function paymentReceivedEmail(credits: number, amount: string) {
+  return {
+    subject: '¡Pago confirmado! — TOKE+',
+    html: baseLayout('Pago confirmado', `
+      <h2 style="margin:0 0 12px;font-size:18px;color:#141413;">¡Pago recibido!</h2>
+      <p style="margin:0 0 16px;font-size:14px;color:#555;line-height:1.6;">
+        Tu compra de <strong>${credits} crédito${credits > 1 ? 's' : ''}</strong> por S/ ${amount} fue confirmada.
+        Ya puedes usar tus créditos para postular a pedidos.
+      </p>
+      <p style="margin:0;font-size:13px;color:#888;">
+        Revisa tu saldo en la app.
+      </p>
+    `),
+  }
+}
+
+export function newReviewEmail(rating: number, clientName: string, requestTitle: string) {
+  const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating)
+  return {
+    subject: '¡Tienes una nueva reseña! — TOKE+',
+    html: baseLayout('Nueva reseña', `
+      <h2 style="margin:0 0 12px;font-size:18px;color:#141413;">Nueva reseña recibida</h2>
+      <p style="margin:0 0 8px;font-size:14px;color:#555;line-height:1.6;">
+        <strong>${clientName}</strong> te dejó una reseña por el servicio <strong>"${requestTitle}"</strong>.
+      </p>
+      <p style="margin:0 0 16px;font-size:24px;letter-spacing:2px;">
+        ${stars}
+      </p>
+      <p style="margin:0;font-size:13px;color:#888;">
+        Abre la app para ver el detalle.
+      </p>
+    `),
+  }
+}
+
+export function orderCancelledEmail(title: string) {
+  return {
+    subject: 'Pedido cancelado — TOKE+',
+    html: baseLayout('Pedido cancelado', `
+      <h2 style="margin:0 0 12px;font-size:18px;color:#141413;">Pedido cancelado</h2>
+      <p style="margin:0 0 16px;font-size:14px;color:#555;line-height:1.6;">
+        El pedido <strong>"${title}"</strong> fue cancelado.
+        Si ya habías sido asignado, no se descontarán créditos adicionales.
+      </p>
+      <p style="margin:0;font-size:13px;color:#888;">
+        Revisa otros pedidos disponibles en la app.
+      </p>
+    `),
+  }
+}

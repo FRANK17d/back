@@ -1,4 +1,4 @@
-import type { Request, RequestHandler } from 'express'
+import type { Request, Response, RequestHandler } from 'express'
 import { ApiError } from '../api-error.js'
 
 type RateLimitOptions = {
@@ -30,7 +30,7 @@ export function createRateLimit(options: RateLimitOptions): RequestHandler {
   }, SWEEP_INTERVAL_MS)
   timer.unref()
 
-  return (req, _res, next) => {
+  return (req, res, next) => {
     const now = Date.now()
     const key = options.key(req)
     const existing = buckets.get(key)
@@ -40,13 +40,22 @@ export function createRateLimit(options: RateLimitOptions): RequestHandler {
         count: 1,
         expiresAt: now + options.windowMs,
       })
+      res.setHeader('X-RateLimit-Limit', options.maxRequests)
+      res.setHeader('X-RateLimit-Remaining', options.maxRequests - 1)
+      res.setHeader('X-RateLimit-Reset', Math.ceil((now + options.windowMs) / 1000))
       next()
       return
     }
 
     existing.count += 1
+    const remaining = Math.max(0, options.maxRequests - existing.count)
+    res.setHeader('X-RateLimit-Limit', options.maxRequests)
+    res.setHeader('X-RateLimit-Remaining', remaining)
+    res.setHeader('X-RateLimit-Reset', Math.ceil(existing.expiresAt / 1000))
 
     if (existing.count > options.maxRequests) {
+      const retryAfter = Math.ceil((existing.expiresAt - now) / 1000)
+      res.setHeader('Retry-After', retryAfter)
       next(new ApiError(429, options.code, options.message))
       return
     }
