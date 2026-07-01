@@ -60,8 +60,10 @@ export function createApp() {
 
   app.get('/health', async (_req, res) => {
     try {
+      const start = Date.now()
       const admin = createInsforgeAdminClient()
       const { error } = await (admin as any).database.from('profiles').select('id', { count: 'exact', head: true })
+      const dbLatencyMs = Date.now() - start
       const dbOk = !error
       const mpOk = !!env.mercadoPagoAccessToken
       const allOk = dbOk
@@ -71,8 +73,10 @@ export function createApp() {
         datos: {
           servicio: 'backend-toke',
           db: dbOk ? 'ok' : 'error',
+          db_latency_ms: dbLatencyMs,
           mercadopago: mpOk ? 'configurado' : 'sin_configurar',
           ai: env.openrouterApiKey ? 'configurado' : 'sin_configurar',
+          uptime_s: Math.floor(process.uptime()),
         },
       })
     } catch {
